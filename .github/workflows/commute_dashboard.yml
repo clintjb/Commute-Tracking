@@ -1,0 +1,74 @@
+name: Commute Dashboard
+
+on:
+  schedule:
+    - cron: '5 9 * * 1-5'   # 11:05 CET (UTC+2 summer) / adjust to '5 10' in winter
+    - cron: '5 20 * * 1-5'  # 10:05 PM CET (UTC+2 summer) / adjust to '5 21' in winter
+  workflow_dispatch:         # allow manual trigger
+
+jobs:
+  generate-dashboard:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pandas numpy plotly gspread google-auth
+
+      - name: Export Google Sheet as CSV
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+        run: |
+          python - <<'EOF'
+          import os, json, gspread
+          from google.oauth2.service_account import Credentials
+
+          creds_json = json.loads(os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"])
+          scopes = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
+          creds = Credentials.from_service_account_info(creds_json, scopes=scopes)
+          gc = gspread.authorize(creds)
+
+          sheet = gc.open_by_key(os.environ["GOOGLE_SHEET_ID"])
+          ws = sheet.worksheet("Metrics")
+          rows = ws.get_all_values()
+
+          import csv
+          with open("Commute Tracker - Metrics.csv", "w", newline="", encoding="utf-8") as f:
+              writer = csv.writer(f)
+              writer.writerows(rows)
+
+          print(f"Exported {len(rows)-1} data rows from 'Metrics' tab")
+          EOF
+
+      - name: Run dashboard script
+        run: python script.py
+
+      - name: Push HTML files to clintjb.github.io
+        env:
+          TARGET_PAT: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
+          git clone https://x-access-token:${PERSONAL_ACCESS_TOKEN}@github.com/clintjb/clintjb.github.io.git target_repo
+
+          cp dashboard.html target_repo/_includes/commute_dashboard.html
+          cp kpi.html       target_repo/_includes/commute_kpi.html
+
+          cd target_repo
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add _includes/commute_dashboard.html _includes/commute_kpi.html
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update commute dashboard [$(date -u '+%Y-%m-%d %H:%M UTC')]"
+            git push
+          fi
