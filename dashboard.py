@@ -74,7 +74,7 @@ kpi_html = f"""
 """
 
 with open("kpi.html", "w") as f:
-    f.write("{% raw %}\n" + kpi_html + "\n{% endraw %}")
+    f.write(kpi_html)
 
 # --- Dashboard ---
 fig = make_subplots(rows=4, cols=1, row_heights=[0.25]*4, vertical_spacing=0.1,
@@ -129,12 +129,4 @@ fig.add_vline(x=x0, line_width=1, line_dash="dash", line_color="gray", row=2, co
 fig.add_vline(x=x1, line_width=1, line_dash="dash", line_color="gray", row=2, col=1)
 
 fig.write_html("dashboard.html")
-
-# Wrap both files in Liquid raw tags to prevent Jekyll parsing errors
-for fname in ["dashboard.html", "kpi.html"]:
-    with open(fname, "r") as f:
-        html = f.read()
-    with open(fname, "w") as f:
-        f.write("{%- raw -%}\n" + html + "\n{%- endraw -%}")
-
 print("Generated: kpi.html, dashboard.html")
