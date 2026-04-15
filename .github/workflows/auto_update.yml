@@ -9,20 +9,20 @@ on:
 jobs:
   generate-dashboard:
     runs-on: ubuntu-latest
-
+ 
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v4
-
+ 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
+ 
       - name: Install dependencies
         run: |
-          pip install pandas numpy plotly gspread google-auth
-
+          pip install pandas numpy plotly==2.12.1 gspread google-auth
+ 
       - name: Export Google Sheet as CSV
         env:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
