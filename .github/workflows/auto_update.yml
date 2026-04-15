@@ -1,9 +1,9 @@
-name: Commute Dashboard
+name: Automatic Commute Dashboard Trigger
 
 on:
   schedule:
-    - cron: '5 9 * * 1-5'
-    - cron: '5 20 * * 1-5'
+    - cron: '5 9 * * 1-5'   # 11:05 CET (UTC+2 summer) / adjust to '5 10' in winter
+    - cron: '5 20 * * 1-5'  # 10:05 PM CET (UTC+2 summer) / adjust to '5 21' in winter
   workflow_dispatch:         # allow manual trigger
 
 jobs:
@@ -54,9 +54,9 @@ jobs:
 
       - name: Push HTML files to clintjb.github.io
         env:
-          TARGET_PAT: ${{ secrets.TARGET_PAT }}
+          PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
-          git clone https://x-access-token:${TARGET_PAT}@github.com/clintjb/clintjb.github.io.git target_repo
+          git clone https://x-access-token:${PERSONAL_ACCESS_TOKEN}@github.com/clintjb/clintjb.github.io.git target_repo
 
           cp dashboard.html target_repo/_includes/commute_dashboard.html
           cp kpi.html       target_repo/_includes/commute_kpi.html
