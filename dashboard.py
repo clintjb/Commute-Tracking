@@ -74,11 +74,11 @@ rag_color = RAG_COLORS.get(latest["RAG"], "gray")
 
 kpi_html = f"""
 <div style='text-align:center;font-family: "Noto Sans Display", Helvetica Neue, Helvetica, Arial, sans-serif;'>
-    <div style='font-size:64px;'>
+    <div style='font-size:48px;'>
         <span style='display:inline-block;width:48px;height:48px;border-radius:50%;background:{rag_color};'></span>
         {latest['Duration (mins)']} mins
     </div>
-    <div style='font-size:18px;color:#666'>{latest['Day of Week']} {latest['Period']}</div>
+    <div style='font-size:16px;color:#666'>{latest['Day of Week']} {latest['Period']}</div>
     <div style='font-size:12px;color:#777;font-style:italic'>Updated: {latest['Date'].strftime('%d-%m-%Y')}</div>
 </div>
 """
