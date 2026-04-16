@@ -128,5 +128,5 @@ fig.add_vrect(x0=x0, x1=x1, fillcolor="lightgray", opacity=0.3, layer="below", l
 fig.add_vline(x=x0, line_width=1, line_dash="dash", line_color="gray", row=2, col=1)
 fig.add_vline(x=x1, line_width=1, line_dash="dash", line_color="gray", row=2, col=1)
 
-fig.write_html("dashboard.html")
+fig.write_html("dashboard.html", include_plotlyjs='cdn')
 print("Generated: kpi.html, dashboard.html")
