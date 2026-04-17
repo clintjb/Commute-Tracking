@@ -61,7 +61,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Backup: CSV + dashboard HTML"
+            git commit -m "Backup Files"
             git push
           fi
 
