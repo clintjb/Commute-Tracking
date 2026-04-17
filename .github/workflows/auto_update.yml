@@ -10,7 +10,7 @@ jobs:
   run:
     runs-on: ubuntu-latest
     permissions:
-      contents: write 
+      contents: write
 
     steps:
 
@@ -49,9 +49,14 @@ jobs:
       - name: Save Backups To Repo
         if: steps.fetch.outputs.fresh == 'true'
         run: |
+          mkdir -p backup
+          cp "Commute Tracker - Metrics.csv" backup/
+          cp dashboard.html backup/
+          cp kpi.html backup/
+
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "Commute Tracker - Metrics.csv" dashboard.html kpi.html
+          git add backup/
 
           if git diff --cached --quiet; then
             echo "No changes to commit"
