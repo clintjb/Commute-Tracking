@@ -1,0 +1,72 @@
+import csv
+import json
+import os
+import sys
+from datetime import datetime
+
+import gspread
+import pandas as pd
+from google.oauth2.service_account import Credentials
+
+CSV_PATH     = "Commute Tracker - Metrics.csv"
+FRESH_FLAG   = ".fresh"         
+WINDOW_HOURS = 3
+
+
+def export_sheet() -> None:
+    creds_json = json.loads(os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"])
+    scopes     = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
+    creds      = Credentials.from_service_account_info(creds_json, scopes=scopes)
+    gc         = gspread.authorize(creds)
+
+    ws   = gc.open_by_key(os.environ["GOOGLE_SHEET_ID"]).worksheet("Metrics")
+    rows = ws.get_all_values()
+
+    with open(CSV_PATH, "w", newline="", encoding="utf-8") as f:
+        csv.writer(f).writerows(rows)
+
+    print(f"[fetch] Exported {len(rows) - 1} data rows from 'Metrics' tab")
+
+
+def is_fresh() -> bool:
+    df = pd.read_csv(CSV_PATH)
+    df["Date"]         = pd.to_datetime(df["Date"],         errors="coerce")
+    df["Arrival Time"] = pd.to_datetime(df["Arrival Time"], errors="coerce")
+
+    latest = df.sort_values("Date").iloc[-1]
+    now    = datetime.now()
+
+    # Must be today
+    if latest["Date"].date() != now.date():
+        print(f"[fetch] Latest row is {latest['Date'].date()}, not today — skipping")
+        return False
+
+    # Arrival must be parseable
+    if pd.isna(latest["Arrival Time"]):
+        print("[fetch] Arrival Time is missing — skipping")
+        return False
+
+    # Must be within the last WINDOW_HOURS
+    arrival_dt      = datetime.combine(now.date(), latest["Arrival Time"].time())
+    mins_since      = (now - arrival_dt).total_seconds() / 60
+
+    if not (0 <= mins_since <= WINDOW_HOURS * 60):
+        print(f"[fetch] Arrival was {mins_since:.0f} min ago (window is 0–{WINDOW_HOURS * 60} min) — skipping")
+        return False
+
+    print(f"[fetch] Fresh data found — {latest['Period']} on {latest['Date'].date()}, arrived {mins_since:.0f} min ago")
+    return True
+
+
+if __name__ == "__main__":
+    export_sheet()
+    fresh = is_fresh()
+
+    with open(FRESH_FLAG, "w") as f:
+        f.write("true" if fresh else "false")
+
+    # Also surface as a GitHub Actions output so the workflow can branch on it
+    github_output = os.getenv("GITHUB_OUTPUT")
+    if github_output:
+        with open(github_output, "a") as f:
+            f.write(f"fresh={str(fresh).lower()}\n")
