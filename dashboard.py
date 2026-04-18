@@ -81,21 +81,49 @@ with open("kpi.html", "w") as f:
 
 # Charts
 fig = make_subplots(
-    rows=4, cols=1,
+    rows=5, cols=1,
     vertical_spacing=0.08,
     subplot_titles=(
+        "Ontime vs Late Trips (Last 30 Days)",
         "Commute Duration",
         "Departure Time vs Duration",
         "Distribution",
-        "Average Commute Duration",
+        "Average Commute Heatmap",
     ),
 )
+
+# RAG Breakdown (Last 30 Days)
+cutoff     = df["Date"].max() - pd.Timedelta(days=30)
+df_30      = df[df["Date"] >= cutoff]
+rag_counts = df_30["RAG"].value_counts()
+
+rag_order  = ["Green", "Amber", "Red"]
+rag_vals   = [rag_counts.get(r, 0) for r in rag_order]
+rag_total  = sum(rag_vals)
+rag_pcts   = [v / rag_total * 100 if rag_total else 0 for v in rag_vals]
+rag_clrs   = [RAG_COLORS.get(r, "gray") for r in rag_order]
+
+for label, pct, val, clr in zip(rag_order, rag_pcts, rag_vals, rag_clrs):
+    fig.add_trace(go.Bar(
+        x=[pct],
+        y=[""],
+        orientation="h",
+        marker_color=clr,
+        text=f"{pct:.1f}% ({val})" if pct >= 8 else "",
+        textposition="inside",
+        insidetextanchor="middle",
+        hovertemplate=f"{label}: {pct:.1f}% ({val} trips)<extra></extra>",
+        name=label,
+    ), row=1, col=1)
+
+fig.update_xaxes(range=[0, 100], ticksuffix="%", row=1, col=1)
+fig.update_yaxes(showticklabels=False, row=1, col=1)
 
 # Trend
 add_period_traces(fig, df, lambda p, d, c: go.Scatter(
     x=d["Date"], y=d["Duration (mins)"], mode="lines+markers",
     line=dict(color=c), marker=dict(color=c, size=8), name=p,
-), row=1)
+), row=2)
 
 # Departure Time
 add_period_traces(fig, df, lambda p, d, c: go.Scatter(
@@ -104,12 +132,12 @@ add_period_traces(fig, df, lambda p, d, c: go.Scatter(
     customdata=d["Hour"],
     hovertemplate="Hour: %{customdata:.1f}<br>Duration: %{y} mins<extra></extra>",
     name=p,
-), row=2)
+), row=3)
 
 # Distribution
 add_period_traces(fig, df, lambda p, d, c: go.Box(
     y=d["Duration (mins)"], name=p, marker_color=c,
-), row=3)
+), row=4)
 
 # Heatmap
 pivot = (
@@ -122,11 +150,11 @@ fig.add_trace(go.Heatmap(
     z=pivot.values, x=pivot.columns, y=pivot.index,
     showscale=False,
     colorscale=[[0, "green"], [0.5, "orange"], [1, "red"]],
-), row=4, col=1)
+), row=5, col=1)
 
 # Overall Styling Of The Charts
 fig.update_layout(
-    height=1400, showlegend=False,
+    height=1700, showlegend=False, barmode="stack",
     plot_bgcolor="white", paper_bgcolor="white",
     font=dict(size=14, color="black"),
 )
@@ -138,21 +166,21 @@ fig.update_yaxes(showgrid=True, gridcolor="lightgray")
 
 fig.update_xaxes(
     range=[x_min, x_max], tickvals=axis_ticks, ticktext=axis_labels,
-    showgrid=False, row=2, col=1,
+    showgrid=False, row=3, col=1,
 )
 fig.add_vrect(
     x0=x_zone_start, x1=x_zone_end,
     fillcolor="lightgray", opacity=0.3, layer="below", line_width=0,
-    row=2, col=1,
+    row=3, col=1,
 )
-fig.add_vline(x=x_zone_start, line_dash="dash", line_color="gray", row=2, col=1)
-fig.add_vline(x=x_zone_end,   line_dash="dash", line_color="gray", row=2, col=1)
+fig.add_vline(x=x_zone_start, line_dash="dash", line_color="gray", row=3, col=1)
+fig.add_vline(x=x_zone_end,   line_dash="dash", line_color="gray", row=3, col=1)
 
 for hour in visible_hours:
     if hour <= COMPRESS_START or hour >= COMPRESS_END:
         fig.add_vline(
             x=compress_time(hour), line_width=0.5, line_color="lightgray",
-            row=2, col=1,
+            row=3, col=1,
         )
 
 # Export Charts
