@@ -11,7 +11,7 @@ from google.oauth2.service_account import Credentials
 
 CSV_PATH     = "Commute Tracker - Metrics.csv"
 FRESH_FLAG   = ".fresh"
-WINDOW_HOURS = 3
+WINDOW_HOURS = 5
 LOCAL_TZ     = ZoneInfo("Europe/Berlin")
 
 
