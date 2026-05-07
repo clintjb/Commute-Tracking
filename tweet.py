@@ -50,7 +50,7 @@ def _build_post(row) -> str:
     message  = messages["Message"].sample(1).iloc[0]
     delay    = int(row["Duration (mins)"]) - BASELINE_MINS
     return (
-        f"@hochbahn heute war ich {delay} Minuten zu spät - {message}.\n"
+        f"Hey @hochbahn heute war ich {delay} Minuten zu spät - {message}.\n"
         f"Mehr zu eurer Service-Performance: https://clintbird.com/blog/commute-tracking-post\n"
         f"#hvv #hamburg #verspätet #bahn"
     )
