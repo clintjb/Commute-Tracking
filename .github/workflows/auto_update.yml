@@ -23,7 +23,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install pandas numpy plotly gspread google-auth tweepy
+        run: pip install pandas numpy plotly gspread google-auth tweepy atproto
 
       - name: Restore Tweet Sent Log
         uses: actions/cache@v4
