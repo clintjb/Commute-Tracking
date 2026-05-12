@@ -31,3 +31,5 @@ Date,Day of Week,Departure Time,Arrival Time,Duration,Duration (mins),Period,RAG
 2026-05-06,Wednesday,07:16:48,08:32:50,1h 16m,76,Morning,Amber
 2026-05-06,Wednesday,17:50:28,19:13:50,1h 23m,83,Evening,Red
 2026-05-11,Monday,07:17:03,08:18:34,1h 2m,62,Morning,Green
+2026-05-11,Monday,18:10:12,19:12:43,1h 3m,63,Evening,Green
+2026-05-12,Tuesday,07:06:17,08:06:33,1h 0m,60,Morning,Green
