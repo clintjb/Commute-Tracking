@@ -34,7 +34,9 @@ Date,Day of Week,Departure Time,Arrival Time,Duration,Duration (mins),Period,RAG
 2026-05-11,Monday,18:10:12,19:12:43,1h 3m,63,Evening,Green
 2026-05-12,Tuesday,07:06:17,08:06:33,1h 0m,60,Morning,Green
 2026-05-12,Tuesday,18:22:06,19:29:25,1h 7m,67,Evening,Green
-2026-05-13,Wednesday,06:47:40,07:58:58,1h 11m,71,Morning,Amber
+2026-05-13,Wednesday,06:47:40,08:01:41,1h 14m,74,Morning,Amber
 2026-05-13,Wednesday,17:53:42,19:03:47,1h 10m,70,Evening,Green
 2026-05-18,Monday,07:14:06,08:21:53,1h 8m,68,Morning,Green
 2026-05-18,Monday,17:49:08,18:58:08,1h 9m,69,Evening,Green
+2026-05-26,Tuesday,07:14:34,08:26:26,1h 12m,72,Morning,Amber
+2026-05-26,Tuesday,17:52:41,18:55:10,1h 2m,62,Evening,Green
