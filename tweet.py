@@ -66,13 +66,47 @@ def _post_tweet(text: str) -> None:
     client.create_tweet(text=text)
  
  
+def _build_bsky_facets(text: str) -> list:
+    """
+    Build Bluesky facets for URLs and hashtags.
+    Facets use UTF-8 byte offsets, not character offsets.
+    """
+    import re
+    facets = []
+    encoded = text.encode("utf-8")
+
+    # URLs
+    for m in re.finditer(r"https?://[^\s]+", text):
+        url = m.group(0)
+        byte_start = len(text[: m.start()].encode("utf-8"))
+        byte_end   = byte_start + len(url.encode("utf-8"))
+        facets.append({
+            "$type": "app.bsky.richtext.facet",
+            "index": {"byteStart": byte_start, "byteEnd": byte_end},
+            "features": [{"$type": "app.bsky.richtext.facet#link", "uri": url}],
+        })
+
+    # Hashtags — Bluesky tag feature strips the leading #
+    for m in re.finditer(r"#(\w+)", text):
+        byte_start = len(text[: m.start()].encode("utf-8"))
+        byte_end   = byte_start + len(m.group(0).encode("utf-8"))
+        facets.append({
+            "$type": "app.bsky.richtext.facet",
+            "index": {"byteStart": byte_start, "byteEnd": byte_end},
+            "features": [{"$type": "app.bsky.richtext.facet#tag", "tag": m.group(1)}],
+        })
+
+    return facets
+
+
 def _post_bluesky(text: str) -> None:
     # Bluesky has a 300-character limit
     if len(text) > 300:
         text = text[:297] + "…"
+    facets = _build_bsky_facets(text)
     client = BskyClient()
     client.login(BSKY_HANDLE, BSKY_PASSWORD)
-    client.send_post(text=text)
+    client.send_post(text=text, facets=facets)
  
  
 # Tweet Functions
