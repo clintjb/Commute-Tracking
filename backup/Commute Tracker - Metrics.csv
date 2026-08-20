@@ -79,3 +79,5 @@ Date,Day of Week,Departure Time,Arrival Time,Duration,Duration (mins),Period,RAG
 2026-08-13,Thursday,07:18:41,08:29:26,1h 11m,71,Morning,Amber
 2026-08-17,Monday,07:17:19,08:29:04,1h 12m,72,Morning,Amber
 2026-08-18,Tuesday,07:18:59,08:30:23,1h 11m,71,Morning,Amber
+2026-08-20,Thursday,07:15:06,08:29:29,1h 14m,74,Morning,Amber
+2026-08-20,Thursday,18:11:39,19:08:41,57m,57,Evening,Green
