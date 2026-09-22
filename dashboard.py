@@ -14,6 +14,7 @@ COMPRESS_END    = 17
 COMPRESS_FACTOR = 0.2
 
 CSV_PATH = "Commute Tracker - Metrics.csv"
+MAX_DURATION_MINS = 150  # 2.5h — beyond this, treat as a bad/duplicate timestamp, not a real trip
 
 # Helper Functions
 def compress_time(hour):
@@ -46,6 +47,16 @@ df["Departure Time"] = pd.to_datetime(df["Departure Time"], errors="coerce")
 
 if df["Departure Time"].isna().all():
     raise ValueError("Departure Time parsing failed")
+
+# Drop rows with an implausible duration (double/missed timestamp in the
+# sheet) so a bad row doesn't skew charts, KPI, or get picked as "latest".
+bad_duration = df["Duration (mins)"] > MAX_DURATION_MINS
+if bad_duration.any():
+    print(f"[dashboard] Dropping {bad_duration.sum()} row(s) with Duration > {MAX_DURATION_MINS} min (likely bad timestamp)")
+    df = df[~bad_duration].reset_index(drop=True)
+
+if df.empty:
+    raise ValueError("No valid rows remain after filtering implausible durations")
 
 df["Hour"]            = df["Departure Time"].dt.hour + df["Departure Time"].dt.minute / 60
 df["Day of Week"]     = pd.Categorical(df["Day of Week"], categories=WEEKDAYS, ordered=True)

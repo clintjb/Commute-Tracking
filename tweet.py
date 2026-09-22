@@ -13,9 +13,10 @@ CSV_PATH      = "Commute Tracker - Metrics.csv"
 MESSAGES_PATH = "messages.csv"
 SENT_LOG      = "tweet_sent_log.json"
 
-BASELINE_MINS = 60
-WINDOW_HOURS  = 3
-LOCAL_TZ      = ZoneInfo("Europe/Berlin")
+BASELINE_MINS     = 60
+WINDOW_HOURS      = 3
+LOCAL_TZ          = ZoneInfo("Europe/Berlin")
+MAX_DURATION_MINS = 150  # 2.5h — beyond this, treat as a bad/duplicate timestamp, not a real trip
 
 X_API_KEY             = os.environ["X_API_KEY"]
 X_API_SECRET          = os.environ["X_API_SECRET"]
@@ -33,16 +34,25 @@ def _event_id(row) -> str:
     ).hexdigest()
  
  
-def _load_sent_log() -> set:
+def _load_sent_log() -> dict:
+    """
+    Maps event_id -> {"x": bool, "bluesky": bool}, so a platform that
+    already succeeded is never retried (and never double-posted) even if
+    a *different* platform failed and the run crashed partway through.
+    """
     if os.path.exists(SENT_LOG):
         with open(SENT_LOG) as f:
-            return set(json.load(f))
-    return set()
+            raw = json.load(f)
+        # Backwards-compat: migrate old flat list-of-event_id format.
+        if isinstance(raw, list):
+            return {event_id: {"x": True, "bluesky": True} for event_id in raw}
+        return raw
+    return {}
  
  
-def _save_sent_log(log: set) -> None:
+def _save_sent_log(log: dict) -> None:
     with open(SENT_LOG, "w") as f:
-        json.dump(sorted(log), f, indent=2)
+        json.dump(log, f, indent=2, sort_keys=True)
  
  
 def _build_post(row) -> str:
@@ -113,13 +123,29 @@ def _post_bluesky(text: str) -> None:
 def maybe_tweet() -> None:
     df = pd.read_csv(CSV_PATH)
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+ 
+    # Drop rows with an implausible duration (double/missed timestamp in
+    # the sheet) — never tweet about one of these.
+    bad = df["Duration (mins)"] > MAX_DURATION_MINS
+    if bad.any():
+        print(f"[tweet] Ignoring {bad.sum()} row(s) with Duration > {MAX_DURATION_MINS} min (likely bad timestamp)")
+        df = df[~bad]
+ 
+    if df.empty:
+        print("[tweet] Skipped — no valid rows after filtering")
+        return
+ 
     latest = df.sort_values("Date").iloc[-1]
  
     event_id = _event_id(latest)
     sent_log = _load_sent_log()
+    status   = sent_log.get(event_id, {"x": False, "bluesky": False})
  
-    # DeDuplicate NTT (Never Tweet Twice)
-    if event_id in sent_log:
+    # DeDuplicate NTT (Never Tweet Twice) — only fully skip once BOTH
+    # platforms have succeeded for this event. A partial prior failure
+    # (e.g. X succeeded, Bluesky didn't) falls through so we can retry
+    # just the platform that's still missing.
+    if status["x"] and status["bluesky"]:
         print(f"[tweet] Skipped — already sent for event {event_id[:8]}…")
         return
  
@@ -157,15 +183,44 @@ def maybe_tweet() -> None:
     text = _build_post(latest)
     print(f"[tweet] Sending:\n  {text}")
  
-    _post_tweet(text)
-    print("[tweet] Posted to X/Twitter")
+    errors = []
  
-    _post_bluesky(text)
-    print("[bluesky] Posted to Bluesky")
+    if status["x"]:
+        print("[tweet] X/Twitter already posted for this event — skipping")
+    else:
+        try:
+            _post_tweet(text)
+            status["x"] = True
+            sent_log[event_id] = status
+            _save_sent_log(sent_log)  # persist immediately, before touching Bluesky
+            print("[tweet] Posted to X/Twitter")
+        except Exception as exc:
+            errors.append(f"X/Twitter: {exc}")
+            print(f"[tweet] FAILED to post to X/Twitter: {exc}")
  
-    sent_log.add(event_id)
-    _save_sent_log(sent_log)
-    print(f"[tweet] Done — event {event_id[:8]}… logged to {SENT_LOG}")
+    if status["bluesky"]:
+        print("[bluesky] Bluesky already posted for this event — skipping")
+    else:
+        try:
+            _post_bluesky(text)
+            status["bluesky"] = True
+            sent_log[event_id] = status
+            _save_sent_log(sent_log)
+            print("[bluesky] Posted to Bluesky")
+        except Exception as exc:
+            errors.append(f"Bluesky: {exc}")
+            print(f"[bluesky] FAILED to post to Bluesky: {exc}")
+ 
+    if errors:
+        # Don't silently succeed — surface the failure (e.g. so CI marks
+        # the job as failed) while leaving whichever platform DID
+        # succeed correctly recorded in the sent log above.
+        raise RuntimeError(
+            f"[tweet] Completed with errors for event {event_id[:8]}…: "
+            + "; ".join(errors)
+        )
+ 
+    print(f"[tweet] Done — event {event_id[:8]}… fully logged to {SENT_LOG}")
  
  
 if __name__ == "__main__":

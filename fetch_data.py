@@ -9,10 +9,11 @@ import gspread
 import pandas as pd
 from google.oauth2.service_account import Credentials
 
-CSV_PATH     = "Commute Tracker - Metrics.csv"
-FRESH_FLAG   = ".fresh"
-WINDOW_HOURS = 5
-LOCAL_TZ     = ZoneInfo("Europe/Berlin")
+CSV_PATH         = "Commute Tracker - Metrics.csv"
+FRESH_FLAG       = ".fresh"
+WINDOW_HOURS     = 5
+LOCAL_TZ         = ZoneInfo("Europe/Berlin")
+MAX_DURATION_MINS = 150  # 2.5h — beyond this, treat as a bad/duplicate timestamp, not a real trip
 
 
 def export_sheet() -> None:
@@ -33,6 +34,18 @@ def export_sheet() -> None:
 def is_fresh() -> bool:
     df = pd.read_csv(CSV_PATH)
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+
+    # Drop rows with an implausible duration (double/missed timestamp in
+    # the sheet, e.g. a skipped scan). These shouldn't count as "latest"
+    # or "fresh" for tweeting/dashboard purposes.
+    bad = df["Duration (mins)"] > MAX_DURATION_MINS
+    if bad.any():
+        print(f"[fetch] Dropping {bad.sum()} row(s) with Duration > {MAX_DURATION_MINS} min (likely bad timestamp)")
+        df = df[~bad]
+
+    if df.empty:
+        print("[fetch] No valid rows remain after filtering — skipping")
+        return False
 
     latest = df.sort_values("Date").iloc[-1]
     now    = datetime.now(tz=LOCAL_TZ)
